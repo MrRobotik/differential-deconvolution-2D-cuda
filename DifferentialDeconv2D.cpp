@@ -6,12 +6,12 @@ DifferentialDeconv2D::DifferentialDeconv2D(
     double optimizerEta,
     double optimizerLambda,
     unsigned int numIterations,
-    unsigned int threadsPerBlock)
+    unsigned int numThreadsPerBlock)
     :
     optimizerEta(optimizerEta),
     optimizerLambda(optimizerLambda),
     numIterations(numIterations),
-    threadsPerBlock(threadsPerBlock)
+    numThreadsPerBlock(numThreadsPerBlock)
 {
     if (pointSpreadFn.rows % 2 == 0 || pointSpreadFn.cols % 2 == 0) {
         throw std::logic_error("pointSpreadFn size must be odd");
@@ -52,12 +52,15 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
 
     // construct optimizer
     Optimizer *optimizer = new Optimizer(
+        this->numThreadsPerBlock,
         imageExpected.ptr<const float>(),
         imageObserved.ptr<const float>(),
         this->pointSpreadFn.ptr<const float>(),
         this->pointSpreadFnFlip.ptr<const float>(),
-        image.rows,
-        image.cols,
+        imageExpected.rows,
+        imageExpected.cols,
+        rowPadding,
+        colPadding,
         this->pointSpreadFn.rows,
         this->pointSpreadFn.cols);
 

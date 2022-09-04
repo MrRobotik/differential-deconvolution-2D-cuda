@@ -2,38 +2,42 @@
 #include "OptimizerKernels.h"
 
 Optimizer::Optimizer(
+    unsigned int numThreadsPerBlock,
     const float *h_imageExpected,
     const float *h_imageObserved,
     const float *h_pointSpreadFn,
     const float *h_pointSpreadFnFlip,
     int imageRows,
     int imageCols,
+    int imageRowPadding,
+    int imageColPadding,
     int pointSpreadFnRows,
     int pointSpreadFnCols)
     :
+    numThreadsPerBlock(numThreadsPerBlock),
     imageRows(imageRows),
     imageCols(imageCols),
-    imagePaddedRows(imageRows + (pointSpreadFnRows - 1)),
-    imagePaddedCols(imageCols + (pointSpreadFnCols - 1)),
+    imageRowPadding(imageRowPadding),
+    imageColPadding(imageColPadding),
     pointSpreadFnRows(pointSpreadFnRows),
     pointSpreadFnCols(pointSpreadFnCols)
 {
     // allocate resources on device
     cudaMallocPitch(
         &(this->d_imageExpected),
-        &(this->imagePaddedPitch),
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows);
+        &(this->imagePitch),
+        this->imageCols * sizeof(float),
+        this->imageRows);
     cudaMallocPitch(
         &(this->d_imageObserved),
-        &(this->imagePaddedPitch),
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows);
+        &(this->imagePitch),
+        this->imageCols * sizeof(float),
+        this->imageRows);
     cudaMallocPitch(
         &(this->d_imageIntrinsic),
-        &(this->imagePaddedPitch),
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows);
+        &(this->imagePitch),
+        this->imageCols * sizeof(float),
+        this->imageRows);
     cudaMallocPitch(
         &(this->d_imageDifferential),
         &(this->imagePitch),
@@ -53,27 +57,27 @@ Optimizer::Optimizer(
     // copy input data
     cudaMemcpy2D(
         this->d_imageExpected,
-        this->imagePaddedPitch,
+        this->imagePitch,
         h_imageExpected,
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows,
+        this->imageCols * sizeof(float),
+        this->imageCols * sizeof(float),
+        this->imageRows,
         cudaMemcpyHostToDevice);
     cudaMemcpy2D(
         this->d_imageObserved,
-        this->imagePaddedPitch,
+        this->imagePitch,
         h_imageObserved,
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows,
+        this->imageCols * sizeof(float),
+        this->imageCols * sizeof(float),
+        this->imageRows,
         cudaMemcpyHostToDevice);
     cudaMemcpy2D(
         this->d_imageIntrinsic,
-        this->imagePaddedPitch,
+        this->imagePitch,
         h_imageExpected,
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows,
+        this->imageCols * sizeof(float),
+        this->imageCols * sizeof(float),
+        this->imageRows,
         cudaMemcpyHostToDevice);
     cudaMemcpy2D(
         this->d_pointSpreadFn,
@@ -92,11 +96,21 @@ Optimizer::Optimizer(
         this->pointSpreadFnRows,
         cudaMemcpyHostToDevice);
 
-    // prepare execution settings
-    this->numThreadsPerBlock.x = 32u;
-    this->numThreadsPerBlock.y = 32u;
-    this->numBlocks.x = this->imageCols / this->numThreadsPerBlock.x;
-    this->numBlocks.y = this->imageRows / this->numThreadsPerBlock.y;
+    // initialize differential image to zeros
+    size_t total = size_t(this->imageRows) * size_t(this->imageCols);
+    float *zeros = new float[total];
+    for (size_t i = 0; i < total; i ++) {
+        zeros[i] = 0.0f;
+    }
+    cudaMemcpy2D(
+        this->d_imageDifferential,
+        this->imagePitch,
+        zeros,
+        this->imageCols * sizeof(float),
+        this->imageCols * sizeof(float),
+        this->imageRows,
+        cudaMemcpyHostToDevice);
+    delete [] zeros;
 }
 
 Optimizer::~Optimizer()
@@ -112,62 +126,68 @@ Optimizer::~Optimizer()
 
 void Optimizer::step(double optimizerEta, double optimizerLambda)
 {
-    dim3 nb = this->numBlocks;
-    dim3 nt = this->numThreadsPerBlock;
+    unsigned int rows = this->imageRows - 2 * this->imageRowPadding;
+    unsigned int cols = this->imageCols - 2 * this->imageColPadding;
+    dim3 blockDim(this->numThreadsPerBlock, this->numThreadsPerBlock);
+    dim3 gridDim(cols / blockDim.x, rows / blockDim.y);
 
-    zeroDifferential<<<nb, nt>>>(
-        this->d_imageDifferential,
-        this->imagePitch);
-
-    evalObjectiveFnDerivative<<<nb, nt>>>(
+    evalObjectiveFnDerivative<<<gridDim, blockDim>>>(
         this->d_imageExpected,
         this->d_imageObserved,
         this->d_pointSpreadFnFlip,
         this->d_imageDifferential,
+        this->imageRowPadding,
+        this->imageColPadding,
         this->pointSpreadFnRows,
         this->pointSpreadFnCols,
         this->imagePitch,
-        this->imagePaddedPitch,
         this->pointSpreadFnPitch);
 
-    // evalRegularizerDerivative<<<nb, nt>>>(
-    //     this->d_imageIntrinsic,
-    //     this->d_imageDifferential,
-    //     this->pointSpreadFnRows,
-    //     this->pointSpreadFnCols,
-    //     this->imagePitch,
-    //     this->imagePaddedPitch,
-    //     optimizerLambda);
+    if (optimizerLambda != 0.0) {
+        evalRegularizerDerivative<<<gridDim, blockDim>>>(
+            this->d_imageIntrinsic,
+            this->d_imageDifferential,
+            this->imageRowPadding,
+            this->imageColPadding,
+            this->imagePitch,
+            optimizerLambda);
+    } // else don't use regularizer
 
-    updateObserved<<<nb, nt>>>(
+    updateObserved<<<gridDim, blockDim>>>(
         this->d_imageDifferential,
         this->d_pointSpreadFn,
         this->d_imageObserved,
+        this->imageRowPadding,
+        this->imageColPadding,
         this->pointSpreadFnRows,
         this->pointSpreadFnCols,
         this->imagePitch,
-        this->imagePaddedPitch,
         this->pointSpreadFnPitch,
         optimizerEta);
 
-    updateIntrinsic<<<nb, nt>>>(
+    updateIntrinsic<<<gridDim, blockDim>>>(
         this->d_imageDifferential,
         this->d_imageIntrinsic,
-        this->pointSpreadFnRows,
-        this->pointSpreadFnCols,
+        this->imageRowPadding,
+        this->imageColPadding,
         this->imagePitch,
-        this->imagePaddedPitch,
         optimizerEta);
+
+    zeroDifferential<<<gridDim, blockDim>>>(
+        this->d_imageDifferential,
+        this->imageRowPadding,
+        this->imageColPadding,
+        this->imagePitch);
 }
 
 void Optimizer::getResultFromDevice(float *h_imageIntrinsic) const
 {
     cudaMemcpy2D(
         h_imageIntrinsic,
-        this->imagePaddedCols * sizeof(float),
+        this->imageCols * sizeof(float),
         this->d_imageIntrinsic,
-        this->imagePaddedPitch,
-        this->imagePaddedCols * sizeof(float),
-        this->imagePaddedRows,
+        this->imagePitch,
+        this->imageCols * sizeof(float),
+        this->imageRows,
         cudaMemcpyDeviceToHost);
 }

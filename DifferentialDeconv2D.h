@@ -15,7 +15,7 @@ public:
         double optimizerEta,
         double optimizerLambda,
         unsigned int numIterations,
-        unsigned int threadsPerBlock);
+        unsigned int numThreadsPerBlock);
 
     cv::Mat operator ()(const cv::Mat &image);
 
@@ -30,7 +30,7 @@ private:
     double optimizerEta;
     double optimizerLambda;
     unsigned int numIterations;
-    unsigned int threadsPerBlock;
+    unsigned int numThreadsPerBlock;
 };
 
 #endif

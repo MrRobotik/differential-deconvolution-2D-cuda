@@ -13,9 +13,9 @@ int main(int argc, const char **argv)
     cv::Mat imageOriginal = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
     cv::Mat pointSpreadFn = cv::imread(argv[2], cv::IMREAD_GRAYSCALE);
     unsigned int numIterations = std::strtoul(argv[3], nullptr, 10);
-    unsigned int threadsPerBlock = 64u;
-    double optimizerEta = 0.005;
-    double optimizerLambda = 0.05;
+    unsigned int threadsPerBlock = 32;
+    double optimizerEta = 0.0125;
+    double optimizerLambda = 0.02;
     cv::imshow("original", imageOriginal);
 
     // convert to floats and normalize

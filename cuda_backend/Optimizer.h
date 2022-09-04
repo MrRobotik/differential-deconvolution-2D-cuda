@@ -3,7 +3,6 @@
 
 #ifndef __CUDACC__
 #include <stddef.h>
-#include <include/cuda_runtime.h>
 #endif
 
 class Optimizer
@@ -13,12 +12,15 @@ public:
     Optimizer() = delete;
 
     Optimizer(
+        unsigned int numThreadsPerBlock,
         const float *h_imageExpected,
         const float *h_imageObserved,
         const float *h_pointSpreadFn,
         const float *h_pointSpreadFnFlip,
         int imageRows,
         int imageCols,
+        int imageRowPadding,
+        int imageColPadding,
         int pointSpreadFnRows,
         int pointSpreadFnCols);
 
@@ -30,15 +32,17 @@ public:
 
 private:
 
+    // execution settings
+    unsigned int numThreadsPerBlock;
+
     // device metadata
     int imageRows;
     int imageCols;
-    int imagePaddedRows;
-    int imagePaddedCols;
+    int imageRowPadding;
+    int imageColPadding;
     int pointSpreadFnRows;
     int pointSpreadFnCols;
     size_t imagePitch;
-    size_t imagePaddedPitch;
     size_t pointSpreadFnPitch;
 
     // device data
@@ -48,10 +52,6 @@ private:
     float *d_imageDifferential;
     float *d_pointSpreadFn;
     float *d_pointSpreadFnFlip;
-
-    // execution settings
-    dim3 numBlocks;
-    dim3 numThreadsPerBlock;
 };
 
 #endif
