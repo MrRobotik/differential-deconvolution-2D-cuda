@@ -110,7 +110,7 @@ Optimizer::~Optimizer()
     cudaFree(this->d_pointSpreadFnFlip);
 }
 
-void Optimizer::step(double optimizerEta)
+void Optimizer::step(double optimizerEta, double optimizerLambda)
 {
     dim3 nb = this->numBlocks;
     dim3 nt = this->numThreadsPerBlock;
@@ -119,7 +119,7 @@ void Optimizer::step(double optimizerEta)
         this->d_imageDifferential,
         this->imagePitch);
 
-    evalObjectiveFnDerivate<<<nb, nt>>>(
+    evalObjectiveFnDerivative<<<nb, nt>>>(
         this->d_imageExpected,
         this->d_imageObserved,
         this->d_pointSpreadFnFlip,
@@ -129,6 +129,15 @@ void Optimizer::step(double optimizerEta)
         this->imagePitch,
         this->imagePaddedPitch,
         this->pointSpreadFnPitch);
+
+    // evalRegularizerDerivative<<<nb, nt>>>(
+    //     this->d_imageIntrinsic,
+    //     this->d_imageDifferential,
+    //     this->pointSpreadFnRows,
+    //     this->pointSpreadFnCols,
+    //     this->imagePitch,
+    //     this->imagePaddedPitch,
+    //     optimizerLambda);
 
     updateObserved<<<nb, nt>>>(
         this->d_imageDifferential,

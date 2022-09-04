@@ -6,7 +6,7 @@ __global__ void zeroDifferential(
     float *d_imageDifferential,
     size_t imagePitch);
 
-__global__ void evalObjectiveFnDerivate(
+__global__ void evalObjectiveFnDerivative(
     const float *d_imageExpected,
     const float *d_imageObserved,
     const float *d_pointSpreadFnFlip,
@@ -16,6 +16,15 @@ __global__ void evalObjectiveFnDerivate(
     size_t imagePitch,
     size_t imagePaddedPitch,
     size_t pointSpreadFnPitch);
+
+__global__ void evalRegularizerDerivative(
+    const float *d_imageIntrinsic,
+    float *d_imageDifferential,
+    int pointSpreadFnRows,
+    int pointSpreadFnCols,
+    size_t imagePitch,
+    size_t imagePaddedPitch,
+    float optimizerLambda);
 
 __global__ void updateObserved(
     const float *d_imageDifferential,

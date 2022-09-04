@@ -4,10 +4,12 @@
 DifferentialDeconv2D::DifferentialDeconv2D(
     const cv::Mat &pointSpreadFn,
     double optimizerEta,
+    double optimizerLambda,
     unsigned int numIterations,
     unsigned int threadsPerBlock)
     :
     optimizerEta(optimizerEta),
+    optimizerLambda(optimizerLambda),
     numIterations(numIterations),
     threadsPerBlock(threadsPerBlock)
 {
@@ -56,13 +58,19 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
         this->pointSpreadFnFlip.ptr<const float>(),
         image.rows,
         image.cols,
-        pointSpreadFn.rows,
-        pointSpreadFn.cols);
+        this->pointSpreadFn.rows,
+        this->pointSpreadFn.cols);
 
     // iterative optimization
     for (size_t i = 0; i < this->numIterations; i ++) {
-        optimizer->step(this->optimizerEta);
+        optimizer->step(this->optimizerEta, this->optimizerLambda);
+        int progress = 50.0 * (double(i) / double(this->numIterations));
+        showProgress(progress);
+        std::cout << std::flush;
     }
+    showProgress(50);
+    std::cout << std::endl;
+
     // finalize
     cv::Mat imageIntrinsic(imageExpected.size(), CV_32FC1);
     optimizer->getResultFromDevice(imageIntrinsic.ptr<float>());
@@ -70,4 +78,15 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
     cv::Range rowRange(rowPadding, rowPadding + image.rows);
     cv::Range colRange(colPadding, colPadding + image.cols);
     return imageIntrinsic(rowRange, colRange).clone();
+}
+
+void DifferentialDeconv2D::showProgress(int progress)
+{
+    std::cout << '\r';
+    for (int i = 0; i < progress; i ++) {
+        std::cout << '|';
+    }
+    for (int i = progress; i < 50; i ++) {
+        std::cout << '=';
+    }
 }

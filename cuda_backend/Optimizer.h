@@ -24,7 +24,7 @@ public:
 
     ~Optimizer();
 
-    void step(double optimizerEta);
+    void step(double optimizerEta, double optimizerLambda);
 
     void getResultFromDevice(float *h_imageIntrinsic) const;
 
