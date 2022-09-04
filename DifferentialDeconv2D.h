@@ -1,7 +1,6 @@
 #ifndef DIFFERENTIALDECONV2D_H
 #define DIFFERENTIALDECONV2D_H
 
-#include <iostream>
 #include <opencv2/imgproc.hpp>
 
 class DifferentialDeconv2D
@@ -15,13 +14,10 @@ public:
         double optimizerEta,
         double optimizerLambda,
         unsigned int numIterations,
-        unsigned int numThreadsPerBlock);
+        unsigned int numThreadsPerBlock,
+        void (*afterIterationCallback)(double)=nullptr);
 
     cv::Mat operator ()(const cv::Mat &image);
-
-private:
-
-    static void showProgress(int progress);
 
 private:
 
@@ -31,6 +27,7 @@ private:
     double optimizerLambda;
     unsigned int numIterations;
     unsigned int numThreadsPerBlock;
+    void (*afterIterationCallback)(double);
 };
 
 #endif

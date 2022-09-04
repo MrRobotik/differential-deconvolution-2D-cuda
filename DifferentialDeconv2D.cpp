@@ -6,12 +6,14 @@ DifferentialDeconv2D::DifferentialDeconv2D(
     double optimizerEta,
     double optimizerLambda,
     unsigned int numIterations,
-    unsigned int numThreadsPerBlock)
+    unsigned int numThreadsPerBlock,
+    void (*afterIterationCallback)(double))
     :
     optimizerEta(optimizerEta),
     optimizerLambda(optimizerLambda),
     numIterations(numIterations),
-    numThreadsPerBlock(numThreadsPerBlock)
+    numThreadsPerBlock(numThreadsPerBlock),
+    afterIterationCallback(afterIterationCallback)
 {
     if (pointSpreadFn.rows % 2 == 0 || pointSpreadFn.cols % 2 == 0) {
         throw std::logic_error("pointSpreadFn size must be odd");
@@ -67,13 +69,11 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
     // iterative optimization
     for (size_t i = 0; i < this->numIterations; i ++) {
         optimizer->step(this->optimizerEta, this->optimizerLambda);
-        int progress = 50.0 * (double(i) / double(this->numIterations));
-        showProgress(progress);
-        std::cout << std::flush;
+        if (afterIterationCallback != nullptr) {
+            double progress = double(i + 1) / double(this->numIterations);
+            afterIterationCallback(progress);
+        }
     }
-    showProgress(50);
-    std::cout << std::endl;
-
     // finalize
     cv::Mat imageIntrinsic(imageExpected.size(), CV_32FC1);
     optimizer->getResultFromDevice(imageIntrinsic.ptr<float>());
@@ -81,15 +81,4 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
     cv::Range rowRange(rowPadding, rowPadding + image.rows);
     cv::Range colRange(colPadding, colPadding + image.cols);
     return imageIntrinsic(rowRange, colRange).clone();
-}
-
-void DifferentialDeconv2D::showProgress(int progress)
-{
-    std::cout << '\r';
-    for (int i = 0; i < progress; i ++) {
-        std::cout << '|';
-    }
-    for (int i = progress; i < 50; i ++) {
-        std::cout << '=';
-    }
 }
