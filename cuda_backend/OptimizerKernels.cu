@@ -79,7 +79,6 @@ __global__ void evalObjectiveFnDerivative(
             float g_wrt_x = d_pointSpreadFnFlip[j];
             accumulator += f_wrt_g * g_wrt_x;
         }
-        // advance
         d_imageExpected = nextRowPtr(d_imageExpected, imagePitch);
         d_imageObserved = nextRowPtr(d_imageObserved, imagePitch);
         d_pointSpreadFnFlip = nextRowPtr(d_pointSpreadFnFlip, pointSpreadFnPitch);
@@ -126,7 +125,6 @@ __global__ void evalRegularizerDerivative(
             float denom = sqrtf(max(0.0f, value * valueCenter));
             accumulator += 1.0f - (value / denom);
         }
-        // advance
         d_imageIntrinsic = nextRowPtr(d_imageIntrinsic, imagePitch);
     }
     // accumulate result
@@ -163,7 +161,6 @@ __global__ void updateObserved(
             float deltaEnergy = -optimizerEta * d_imageDifferential[j];
             accumulator += deltaEnergy * d_pointSpreadFn[j];
         }
-        // advance
         d_imageDifferential = nextRowPtr(d_imageDifferential, imagePitch);
         d_pointSpreadFn = nextRowPtr(d_pointSpreadFn, pointSpreadFnPitch);
     }
