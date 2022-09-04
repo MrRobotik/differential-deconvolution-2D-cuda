@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.5)
+project(cuda_backend LANGUAGES CUDA)
+set(CMAKE_BUILD_TYPE Release)
+set(SOURCES Optimizer.cu OptimizerKernels.cu)
+add_library(${PROJECT_NAME} STATIC ${SOURCES})
+set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_ARCHITECTURES 75)
