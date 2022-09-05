@@ -20,14 +20,6 @@ __device__ static inline const float *elementPtr(
     return reinterpret_cast<const float *>(cptr + size_t(row) * pitch) + col;
 }
 
-// __device__ static inline float *nextRowPtr(
-//     float *ptr,
-//     size_t pitch)
-// {
-//     char *cptr = reinterpret_cast<char *>(ptr);
-//     return reinterpret_cast<float *>(cptr + pitch);
-// }
-
 __device__ static inline const float *nextRowPtr(
     const float *ptr,
     size_t pitch)
@@ -133,7 +125,7 @@ __global__ void evalRegularizerDerivative(
         row + imageRowPadding,
         col + imageColPadding,
         imagePitch);
-    *dest += optimizerLambda * accumulator;
+    *dest += (1.0f / 8.0f) * optimizerLambda * accumulator;
 }
 
 __global__ void updateObserved(
