@@ -114,10 +114,14 @@ __global__ void evalRegularizerDerivative(
     for (int i = 0; i < 3; i ++) {
         for (int j = 0; j < 3; j ++) {
             float value = d_imageIntrinsic[j];
-            float denom = sqrtf(max(0.0f, value * valueCenter));
+            float denom = sqrtf(value * valueCenter);
             accumulator += 1.0f - (value / denom);
         }
         d_imageIntrinsic = nextRowPtr(d_imageIntrinsic, imagePitch);
+    }
+    // numerical problems
+    if (__isnanf(accumulator) || __isinff(accumulator)) {
+        return;
     }
     // accumulate result
     float *dest = elementPtr(
