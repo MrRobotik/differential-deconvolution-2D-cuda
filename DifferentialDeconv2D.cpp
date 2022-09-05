@@ -7,13 +7,13 @@ DifferentialDeconv2D::DifferentialDeconv2D(
     double optimizerLambda,
     unsigned int numIterations,
     unsigned int numThreadsPerBlock,
-    void (*afterIterationCallback)(double))
+    void (*postIterationCallback)(double))
     :
     optimizerEta(optimizerEta),
     optimizerLambda(optimizerLambda),
     numIterations(numIterations),
     numThreadsPerBlock(numThreadsPerBlock),
-    afterIterationCallback(afterIterationCallback)
+    postIterationCallback(postIterationCallback)
 {
     if (pointSpreadFn.rows % 2 == 0 || pointSpreadFn.cols % 2 == 0) {
         throw std::logic_error("pointSpreadFn size must be odd");
@@ -21,7 +21,7 @@ DifferentialDeconv2D::DifferentialDeconv2D(
     pointSpreadFn.convertTo(this->pointSpreadFn, CV_32FC1);
     cv::flip(this->pointSpreadFn, this->pointSpreadFnFlip, -1);
 }
-
+#include <iostream>
 cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
 {
     if (image.type() != CV_32FC1) {
@@ -30,16 +30,18 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
     cv::Mat imageExpected;
     cv::Mat imageObserved;
 
-    // for efficient extrapolation
+    // for efficient extrapolation & device alignment
     int rowPadding = this->pointSpreadFn.rows / 2;
     int colPadding = this->pointSpreadFn.cols / 2;
+    int rowAlignment = getAlignment(image.rows, this->numThreadsPerBlock);
+    int colAlignment = getAlignment(image.cols, this->numThreadsPerBlock);
     cv::copyMakeBorder(
         image,
         imageExpected,
         rowPadding,
-        rowPadding,
+        rowPadding + (rowAlignment - image.rows),
         colPadding,
-        colPadding,
+        colPadding + (colAlignment - image.cols),
         cv::BORDER_REPLICATE);
 
     // to get the initial observed image
@@ -69,9 +71,9 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
     // iterative optimization
     for (size_t i = 0; i < this->numIterations; i ++) {
         optimizer->step(this->optimizerEta, this->optimizerLambda);
-        if (afterIterationCallback != nullptr) {
+        if (this->postIterationCallback != nullptr) {
             double progress = double(i + 1) / double(this->numIterations);
-            afterIterationCallback(progress);
+            this->postIterationCallback(progress);
         }
     }
     // finalize
@@ -81,4 +83,9 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
     cv::Range rowRange(rowPadding, rowPadding + image.rows);
     cv::Range colRange(colPadding, colPadding + image.cols);
     return imageIntrinsic(rowRange, colRange).clone();
+}
+
+int DifferentialDeconv2D::getAlignment(int n, int blockSize)
+{
+    return ((n + (blockSize - 1)) / blockSize) * blockSize;
 }

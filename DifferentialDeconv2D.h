@@ -15,9 +15,13 @@ public:
         double optimizerLambda,
         unsigned int numIterations,
         unsigned int numThreadsPerBlock,
-        void (*afterIterationCallback)(double)=nullptr);
+        void (*postIterationCallback)(double)=nullptr);
 
     cv::Mat operator ()(const cv::Mat &image);
+
+private:
+
+    static int getAlignment(int n, int blockSize);
 
 private:
 
@@ -27,7 +31,7 @@ private:
     double optimizerLambda;
     unsigned int numIterations;
     unsigned int numThreadsPerBlock;
-    void (*afterIterationCallback)(double);
+    void (*postIterationCallback)(double);
 };
 
 #endif
