@@ -67,7 +67,7 @@ __global__ void evalObjectiveFnDerivative(
     float accumulator = 0.0f;
     for (int i = 0; i < pointSpreadFnRows; i ++) {
         for (int j = 0; j < pointSpreadFnCols; j ++) {
-            float f_wrt_g = 2.0f * (d_imageObserved[j] - d_imageExpected[j]);
+            float f_wrt_g = d_imageObserved[j] - d_imageExpected[j];
             float g_wrt_x = d_pointSpreadFnFlip[j];
             accumulator += f_wrt_g * g_wrt_x;
         }
@@ -84,7 +84,7 @@ __global__ void evalObjectiveFnDerivative(
         row + imageRowPadding,
         col + imageColPadding,
         imagePitch);
-    *dest += accumulator;
+    *dest += 2.0f * accumulator;
 }
 
 __global__ void evalRegularizerDerivative(
