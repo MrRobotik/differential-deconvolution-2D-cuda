@@ -1,3 +1,20 @@
+/*
+Demo application for DifferentialDeconv2D algorithm.
+Copyright (C) 2022  Ing. Adam Kucera
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 #include <iostream>
 #include <chrono>
 #include <opencv2/imgproc.hpp>
@@ -8,7 +25,11 @@
 int main(int argc, const char **argv)
 {
     if (argc != 4) {
-        std::cout << "usage: deconv2d-demo IMAGE PSF ITERATIONS" << std::endl;
+        std::cout << "usage: deconv2D-demo IMAGE PSF ITERATIONS\n";
+        std::cout << "  IMAGE       to be deconvolved\n";
+        std::cout << "  PSF         point-spread-function\n";
+        std::cout << "  ITERATIONS  number of iterations\n";
+        std::cout << std::endl;
         return 1;
     }
     std::cout << "loading input data" << std::endl;
