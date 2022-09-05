@@ -124,7 +124,7 @@ Optimizer::~Optimizer()
     cudaFree(this->d_pointSpreadFnFlip);
 }
 
-void Optimizer::step(double optimizerEta, double optimizerLambda)
+void Optimizer::step(double gradientDescentEta, double regularizerLambda)
 {
     unsigned int rows = this->imageRows - 2 * this->imageRowPadding;
     unsigned int cols = this->imageCols - 2 * this->imageColPadding;
@@ -143,14 +143,14 @@ void Optimizer::step(double optimizerEta, double optimizerLambda)
         this->imagePitch,
         this->pointSpreadFnPitch);
 
-    if (optimizerLambda != 0.0) {
+    if (regularizerLambda != 0.0) {
         evalRegularizerDerivative<<<gridDim, blockDim>>>(
             this->d_imageIntrinsic,
             this->d_imageDifferential,
             this->imageRowPadding,
             this->imageColPadding,
             this->imagePitch,
-            optimizerLambda);
+            regularizerLambda);
     } // else don't use regularizer
 
     updateObserved<<<gridDim, blockDim>>>(
@@ -163,7 +163,7 @@ void Optimizer::step(double optimizerEta, double optimizerLambda)
         this->pointSpreadFnCols,
         this->imagePitch,
         this->pointSpreadFnPitch,
-        optimizerEta);
+        gradientDescentEta);
 
     updateIntrinsic<<<gridDim, blockDim>>>(
         this->d_imageDifferential,
@@ -171,7 +171,7 @@ void Optimizer::step(double optimizerEta, double optimizerLambda)
         this->imageRowPadding,
         this->imageColPadding,
         this->imagePitch,
-        optimizerEta);
+        gradientDescentEta);
 
     zeroDifferential<<<gridDim, blockDim>>>(
         this->d_imageDifferential,

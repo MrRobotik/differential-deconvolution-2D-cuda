@@ -1,19 +1,35 @@
 #include "DifferentialDeconv2D.h"
 #include "cuda_backend/Optimizer.h"
 
+#ifdef DIFFERENTIALDECONV2D_SHOW_PROGRESS
+#include <iostream>
+#include <iomanip>
+
+static void showProgress(double progress)
+{
+    std::cout << '\r';
+    for (int i = 0; i < int(50.0 * progress); i ++) {
+        std::cout << '|';
+    }
+    for (int i = int(50.0 * progress); i < 50; i ++) {
+        std::cout << '=';
+    }
+    std::cout << std::right << std::setw(4) << int(100.0 * progress);
+    std::cout << " %" << std::flush;
+}
+#endif
+
 DifferentialDeconv2D::DifferentialDeconv2D(
     const cv::Mat &pointSpreadFn,
-    double optimizerEta,
-    double optimizerLambda,
+    double gradientDescentEta,
+    double regularizerLambda,
     unsigned int numIterations,
-    unsigned int numThreadsPerBlock,
-    void (*postIterationCallback)(double))
+    unsigned int numThreadsPerBlock)
     :
-    optimizerEta(optimizerEta),
-    optimizerLambda(optimizerLambda),
+    gradientDescentEta(gradientDescentEta),
+    regularizerLambda(regularizerLambda),
     numIterations(numIterations),
-    numThreadsPerBlock(numThreadsPerBlock),
-    postIterationCallback(postIterationCallback)
+    numThreadsPerBlock(numThreadsPerBlock)
 {
     if (pointSpreadFn.rows % 2 == 0 || pointSpreadFn.cols % 2 == 0) {
         throw std::logic_error("pointSpreadFn size must be odd");
@@ -21,7 +37,7 @@ DifferentialDeconv2D::DifferentialDeconv2D(
     pointSpreadFn.convertTo(this->pointSpreadFn, CV_32FC1);
     cv::flip(this->pointSpreadFn, this->pointSpreadFnFlip, -1);
 }
-#include <iostream>
+
 cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
 {
     if (image.type() != CV_32FC1) {
@@ -70,11 +86,10 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
 
     // iterative optimization
     for (size_t i = 0; i < this->numIterations; i ++) {
-        optimizer->step(this->optimizerEta, this->optimizerLambda);
-        if (this->postIterationCallback != nullptr) {
-            double progress = double(i + 1) / double(this->numIterations);
-            this->postIterationCallback(progress);
-        }
+        optimizer->step(this->gradientDescentEta, this->regularizerLambda);
+        #ifdef DIFFERENTIALDECONV2D_SHOW_PROGRESS
+        showProgress(double(i + 1) / double(this->numIterations));
+        #endif
     }
     // finalize
     cv::Mat imageIntrinsic(imageExpected.size(), CV_32FC1);

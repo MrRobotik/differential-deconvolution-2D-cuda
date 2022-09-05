@@ -11,11 +11,10 @@ public:
 
     DifferentialDeconv2D(
         const cv::Mat &pointSpreadFn,
-        double optimizerEta,
-        double optimizerLambda,
+        double gradientDescentEta,
+        double regularizerLambda,
         unsigned int numIterations,
-        unsigned int numThreadsPerBlock,
-        void (*postIterationCallback)(double)=nullptr);
+        unsigned int numThreadsPerBlock);
 
     cv::Mat operator ()(const cv::Mat &image);
 
@@ -25,13 +24,15 @@ private:
 
 private:
 
+    // point-spread-function
     cv::Mat pointSpreadFn;
     cv::Mat pointSpreadFnFlip;
-    double optimizerEta;
-    double optimizerLambda;
+
+    // settings
+    double gradientDescentEta;
+    double regularizerLambda;
     unsigned int numIterations;
     unsigned int numThreadsPerBlock;
-    void (*postIterationCallback)(double);
 };
 
 #endif

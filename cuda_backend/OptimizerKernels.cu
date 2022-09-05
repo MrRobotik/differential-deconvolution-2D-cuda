@@ -71,9 +71,12 @@ __global__ void evalObjectiveFnDerivative(
             float g_wrt_x = d_pointSpreadFnFlip[j];
             accumulator += f_wrt_g * g_wrt_x;
         }
-        d_imageExpected = nextRowPtr(d_imageExpected, imagePitch);
-        d_imageObserved = nextRowPtr(d_imageObserved, imagePitch);
-        d_pointSpreadFnFlip = nextRowPtr(d_pointSpreadFnFlip, pointSpreadFnPitch);
+        d_imageExpected =
+            nextRowPtr(d_imageExpected, imagePitch);
+        d_imageObserved =
+            nextRowPtr(d_imageObserved, imagePitch);
+        d_pointSpreadFnFlip =
+            nextRowPtr(d_pointSpreadFnFlip, pointSpreadFnPitch);
     }
     // accumulate result
     float *dest = elementPtr(
@@ -90,7 +93,7 @@ __global__ void evalRegularizerDerivative(
     int imageRowPadding,
     int imageColPadding,
     size_t imagePitch,
-    float optimizerLambda)
+    float regularizerLambda)
 {
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -129,7 +132,7 @@ __global__ void evalRegularizerDerivative(
         row + imageRowPadding,
         col + imageColPadding,
         imagePitch);
-    *dest += (1.0f / 8.0f) * optimizerLambda * accumulator;
+    *dest += (1.0f / 8.0f) * regularizerLambda * accumulator;
 }
 
 __global__ void updateObserved(
@@ -142,7 +145,7 @@ __global__ void updateObserved(
     int pointSpreadFnCols,
     size_t imagePitch,
     size_t pointSpreadFnPitch,
-    float optimizerEta)
+    float gradientDescentEta)
 {
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
@@ -154,7 +157,7 @@ __global__ void updateObserved(
     float accumulator = 0.0f;
     for (int i = 0; i < pointSpreadFnRows; i ++) {
         for (int j = 0; j < pointSpreadFnCols; j ++) {
-            float deltaEnergy = -optimizerEta * d_imageDifferential[j];
+            float deltaEnergy = -gradientDescentEta * d_imageDifferential[j];
             accumulator += deltaEnergy * d_pointSpreadFn[j];
         }
         d_imageDifferential = nextRowPtr(d_imageDifferential, imagePitch);
@@ -175,17 +178,18 @@ __global__ void updateIntrinsic(
     int imageRowPadding,
     int imageColPadding,
     size_t imagePitch,
-    float optimizerEta)
+    float gradientDescentEta)
 {
     unsigned int col = blockIdx.x * blockDim.x + threadIdx.x;
     unsigned int row = blockIdx.y * blockDim.y + threadIdx.y;
 
     // energy change
-    float deltaEnergy = -optimizerEta * (*elementPtr(
+    float diff = *elementPtr(
         d_imageDifferential,
         row + imageRowPadding,
         col + imageColPadding,
-        imagePitch));
+        imagePitch);
+    float deltaEnergy = -gradientDescentEta * diff;
 
     // accumulate result
     float *dest = elementPtr(

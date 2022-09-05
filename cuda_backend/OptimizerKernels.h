@@ -26,7 +26,7 @@ __global__ void evalRegularizerDerivative(
     int imageRowPadding,
     int imageColPadding,
     size_t imagePitch,
-    float optimizerLambda);
+    float regularizerLambda);
 
 __global__ void updateObserved(
     const float *d_imageDifferential,
@@ -38,7 +38,7 @@ __global__ void updateObserved(
     int pointSpreadFnCols,
     size_t imagePitch,
     size_t pointSpreadFnPitch,
-    float optimizerEta);
+    float gradientDescentEta);
 
 __global__ void updateIntrinsic(
     const float *d_imageDifferential,
@@ -46,7 +46,7 @@ __global__ void updateIntrinsic(
     int imageRowPadding,
     int imageColPadding,
     size_t imagePitch,
-    float optimizerEta);
+    float gradientDescentEta);
 
 #endif
 #endif
