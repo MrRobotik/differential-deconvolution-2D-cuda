@@ -2,7 +2,9 @@
 
 ## about
 
-This project is inspired by [1], but instead of random walks optimization, it leverages computational capabilities of modern GPUs and processes all the pixels in parallel at each iteration. Also, instead of uninformed changes of pixel energy by a small amount and checks, whether the objective function is improved or not, the derivative of objective function w.r.t. intrinsic image is computed directly and gradient descent optimization is used. Gamma corrected SSD regularizer is implemented as well. The host code is written in C++ and uses OpenCV library for algorithm initialization, which is not offloaded to GPU. The subsequent iterative gradient descent optimization is performed as a sequence of CUDA kernels in the `for` loop. A demo application is provided in `main.cpp`.
+This project implements an algorithm, which given  the point-spread-function (PSF), restores the intrinsic image which was corrupted by the PSF and noise. The PSF is currently not spatially varying, i.e. this restoration is literally a deconvolution operator. The algorithm is inspired by [1], but instead of random walks optimization, it leverages computational capabilities of modern GPUs and processes all the pixels in parallel at each iteration. Also, instead of trying uninformed (minor) changes of pixel energy and checking, whether the objective function is improved or not, the derivative of objective function w.r.t. intrinsic image is computed directly and gradient descent optimization is used. Total variation regularizer for noise reduction is implemented as well. The host code is written in C++ and uses OpenCV library for convenient algorithm initialization. The subsequent iterative gradient descent optimization is offloaded to GPU as a sequence of CUDA kernels in the `for` loop. A demo application is provided in `main.cpp`.
+
+![Demo](demo/demo-preview.jpg)
 
 ## bibliography
 
