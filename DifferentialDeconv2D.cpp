@@ -75,7 +75,7 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
         rowPadding + (rowAlignment - image.rows),
         colPadding,
         colPadding + (colAlignment - image.cols),
-        cv::BORDER_REFLECT_101);
+        cv::BORDER_REPLICATE);
 
     // to get the initial observed image
     cv::filter2D(
@@ -85,7 +85,7 @@ cv::Mat DifferentialDeconv2D::operator ()(const cv::Mat &image)
         this->pointSpreadFn,
         cv::Size(-1, -1),
         0.0,
-        cv::BORDER_REFLECT_101);
+        cv::BORDER_REPLICATE);
 
     // construct optimizer
     Optimizer *optimizer = new Optimizer(
